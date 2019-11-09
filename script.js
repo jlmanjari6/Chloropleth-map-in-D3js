@@ -12,6 +12,12 @@ var projection = d3.geoAlbersUsa()
 var path = d3.geoPath()
     .projection(projection);
 
+// on DOM load
+$(document).ready(function () {
+    $("#table").hide();
+});
+
+
 d3.json("/canada-province.json").then(function (cp) {
     // Add the labels
     d3.selectAll('path')
@@ -21,38 +27,38 @@ d3.json("/canada-province.json").then(function (cp) {
                 .attr("x", findCentroid(currPathEle)[0])
                 .attr("y", findCentroid(currPathEle)[1])
                 .text(currPathEle.id)
+                .attr("class", "labels")
                 .attr("text-anchor", "middle")
                 .attr("alignment-baseline", "central")
-                .style("font-size", 11)
-                .style("fill", "white");
+                .style("font-size", 12)
+                .style("font-weight", "bold")
+                .style("fill", "black");
         });
 
-
+    // on mouse over and mouse out
     d3.selectAll("path")
         .data(cp.features)
         .on("mouseover", function (d) {
+            $("#table").show();
             currPathEle = d3.select(this)["_groups"][0][0];
             d3.select(this).style('stroke', 'black');
             getTableData(currPathEle.id);
         })
 
-        // fade out tooltip on mouse out               
         .on("mouseout", function (d) {
-            d3.select(this).style('stroke', '#46b5d6');
+            d3.select(this).style('stroke', '#ddd');
         })
         .on("click", clicked);
 });
 
-$(document).ready(function () {
-
-});
-
+// finding centroid to place labels on provinces
 function findCentroid(element) {
     bbox = element.getBBox();
     centroid = [bbox.x + bbox.width / 2, bbox.y + bbox.height / 2];
     return centroid;
 }
 
+// to get details of Airbnb on hover over provinces
 function getTableData(id) {
     var provinceSelected = ""
     if (id == 'CA.NB') {
@@ -111,29 +117,59 @@ function getTableData(id) {
     });
 }
 
+// on click of province and zoom in to display neighbourhoods
 function clicked(d, i) {
+    //hide all labels
+    $(".labels").hide();
+
+    //calling function that handles zoom in and zoom out on click of province
+    currPathEle = d3.select(this)["_groups"][0][0];
+    performZoomOperation(currPathEle, d)
+    
+    // displayNeighbourhoods(currPathEle, d);
+}
+
+
+// function to handle zoom in and zoom out on click
+function performZoomOperation(currPathEle, d) {
     var x, y, k;
-    if (d && centered !== d) {
-        var centroid = path.centroid(d);
+    if (d && centered !== d) {        
+        var centroid = findCentroid(currPathEle);
         x = centroid[0];
         y = centroid[1];
-        k = 2.5;
+        k = 2;
         centered = d;
 
         g.transition()
             .duration(750)
-            .attr("transform", "translate(" + WIDTH / 2 + "," + HEIGHT / 2 + ")scale(" + k + ")translate(" + -x + "," + -y + ")")
+            .attr("transform", "translate(" + WIDTH / 5 + "," + HEIGHT / 5 + ")scale(" + k + ")translate(" + -x + "," + -y + ")")
             .style("stroke-width", 1.5 / k + "px");
-    } else {
+    } else {        
+        x = WIDTH / 2;
+        y = HEIGHT / 2;
+        k = 1;
+        centered = null;
         g.transition()
             .duration(750)
-            .attr("transform", "translate(-559.79,0.708441)")
+            .attr("transform", "translate(" + WIDTH / 2+ "," + HEIGHT / 2 + ")scale(" + k + ")translate(" + -x + "," + -y + ")")
             .style("stroke-width", 1.5 / k + "px");
+        $(".labels").show();
     }
+}
 
-    g.selectAll("path")
-        .classed("active", centered && function (d) { return d === centered; });
-    //   alert("translate(" + 1043 / 2 + "," + 1010 / 2 + ") scale(" + k + ") translate(" + -x + "," + -y + ")");
+function displayNeighbourhoods(currPathEle, d) {
+    if(currPathEle.id == "CA.NB") {
+        fileName = "neighbourhoods_NB.geojson"
+        $.get('neighbourhoodsSVG_NB.svg', function(data) {
+            console.log(data);
+            // $('#text').html(data.replace('n',''));
+         });
+    }
+    if(currPathEle.id == "CA.BC") {
+        fileName = "neighbourhoods_BC.geojson"
+    }
+    console.log(fileName);
 
-
+  
+   
 }
